@@ -1,0 +1,35 @@
+# docker-compose.prod.yml — Scheduler de Rimainder en la VPS
+#
+# Servicio aparte (su propio repo/imagen) que se UNE a las redes existentes para:
+#   - llegar a la base del agente:  agent-postgres:5432  (red interna del compose del agente)
+#   - llegar a OpenWA:              openwa-api:2785       (red openwa-network)
+#
+# Los nombres de las redes externas se confirman en la VPS con `docker network ls` y se
+# ajustan en el archivo .env (AGENT_DB_NETWORK / OPENWA_NETWORK). Ver DEPLOY.md.
+#
+# Levantar:  docker compose -f docker-compose.prod.yml up -d --build
+
+services:
+  scheduler:
+    build: .
+    image: rimainder-scheduler
+    container_name: rimainder-scheduler
+    env_file:
+      - .env
+    networks:
+      - agent-internal # para llegar a agent-postgres
+      - openwa # para llegar a openwa-api
+    # /health solo accesible desde la propia VPS (no expuesto a internet).
+    ports:
+      - '127.0.0.1:3000:3000'
+    restart: unless-stopped
+
+networks:
+  agent-internal:
+    external: true
+    # Red interna del compose del agente (donde vive agent-postgres).
+    # Suele llamarse "<carpeta-del-agente>_internal" (ej: whatsapp-agentkit_internal).
+    name: ${AGENT_DB_NETWORK:-whatsapp-agentkit_internal}
+  openwa:
+    external: true
+    name: ${OPENWA_NETWORK:-openwa-network}

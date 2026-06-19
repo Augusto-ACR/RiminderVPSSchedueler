@@ -1,0 +1,18 @@
+# Postgres local para desarrollar el scheduler SIN tocar la base de producción.
+# Arrancar:  docker compose up -d
+# Apagar:    docker compose down   (agregá -v para borrar también los datos)
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: scheduler-db-local
+    environment:
+      POSTGRES_USER: rimainder
+      POSTGRES_PASSWORD: rimainder
+      POSTGRES_DB: agent_db
+    ports:
+      - '5432:5432'
+    volumes:
+      - scheduler_pgdata:/var/lib/postgresql/data
+
+volumes:
+  scheduler_pgdata:

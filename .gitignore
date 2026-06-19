@@ -1,0 +1,11 @@
+node_modules/
+dist/
+coverage/
+.env
+*.log
+
+# Claude Code: skills, agentes, comandos, hooks y settings (todo lo del asistente)
+.claude/
+CLAUDE.md
+MEMORY.md
+.mcp.json

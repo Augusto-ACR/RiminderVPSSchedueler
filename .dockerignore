@@ -1,0 +1,14 @@
+node_modules
+dist
+coverage
+.git
+.env
+*.log
+.claude
+CLAUDE.md
+MEMORY.md
+docs
+knowledge
+conventions
+*.md
+!README.md
