@@ -27,11 +27,27 @@ export class EventosRepository {
   constructor(@Inject(DATA_SOURCE) private readonly ds: DataSource) {}
 
   /**
+   * Normaliza el resultado de `query()`: TypeORM/pg puede devolver el arreglo de filas
+   * directo, o un tuple `[filas, cantidadAfectada]` para UPDATE...RETURNING. Devolvemos
+   * siempre el arreglo de filas.
+   */
+  private static filas<T>(result: unknown): T[] {
+    if (!Array.isArray(result)) {
+      return [];
+    }
+    // Tuple [filas, count]: el primer elemento es a su vez un arreglo.
+    if (result.length > 0 && Array.isArray(result[0])) {
+      return result[0] as T[];
+    }
+    return result as T[];
+  }
+
+  /**
    * Devuelve a 'pendiente' los eventos que quedaron colgados en 'enviando' por un crash
    * (su intento es más viejo que `stuckMin`). Retorna cuántos liberó.
    */
   async liberarStuck(stuckMin: number): Promise<number> {
-    const rows: unknown[] = await this.ds.query(
+    const result = await this.ds.query(
       `UPDATE eventos
          SET notif_estado = 'pendiente'
        WHERE notif_estado = 'enviando'
@@ -39,7 +55,7 @@ export class EventosRepository {
        RETURNING id`,
       [stuckMin],
     );
-    return rows.length;
+    return EventosRepository.filas(result).length;
   }
 
   /**
@@ -47,7 +63,7 @@ export class EventosRepository {
    * quedó atrasado más que la ventana de gracia. Anti-spam tras una caída.
    */
   async descartarVencidos(graciaMin: number): Promise<EventoDescartado[]> {
-    return this.ds.query(
+    const result = await this.ds.query(
       `UPDATE eventos
          SET notif_estado = 'descartado', notificado = true
        WHERE notificado = false
@@ -61,6 +77,7 @@ export class EventosRepository {
          recurrencia`,
       [graciaMin],
     );
+    return EventosRepository.filas<EventoDescartado>(result);
   }
 
   /**
@@ -69,7 +86,7 @@ export class EventosRepository {
    * otro tick (ni el agente) los vuelva a tomar. Retorna las filas reclamadas.
    */
   async claimDue(graciaMin: number, limite = 200): Promise<EventoDue[]> {
-    return this.ds.query(
+    const result = await this.ds.query(
       `UPDATE eventos
          SET notif_estado = 'enviando', notif_intento_at = timezone('UTC', now())
        WHERE id IN (
@@ -87,6 +104,7 @@ export class EventosRepository {
        RETURNING ${EventosRepository.RETURNING_DUE}`,
       [graciaMin, limite],
     );
+    return EventosRepository.filas<EventoDue>(result);
   }
 
   /** Cierra un evento enviado con éxito. */
